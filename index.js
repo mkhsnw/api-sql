@@ -285,20 +285,27 @@ app.get("/products", async (req, res) => {
 });
 
 app.get('/product/:id', async (req,res) => {
-  const products = await Product.findAll();
+  try {
+    const product = await Product.findByPk(req.params.id);
 
-  // Buat array baru dengan properti discountPrice
-  const productsWithDiscount = products.map((product) => {
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
     const productData = product.toJSON(); // Konversi ke plain object
+
     if (productData.discount) {
-      productData.discountPrice =
+      productData.discountPrice = 
         productData.price - (productData.price * productData.discount) / 100;
     }
-    return productData;
+
+    res.status(200).json(productData);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
   });
 
-  res.status(200).send(productsWithDiscount);
-})
+  
 
 app.post('/product', async (req,res) => {
   const {name, description, price, stock, discount, store_id} = req.body;
