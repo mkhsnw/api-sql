@@ -13,12 +13,6 @@ const PORT = process.env.PORT
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialect: "postgres", // Tambahkan ini
   protocol: "postgres",
-  dialectOptions: {
-    ssl: {
-      require: true,
-      rejectUnauthorized: false,
-    },
-  },
 });
 
 try{
