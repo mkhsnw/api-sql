@@ -149,6 +149,14 @@ const Order = sequelize.define("Order", {
     },
     allowNull: false,
   },
+  store_id: {
+    type: DataTypes.INTEGER,
+    references: {
+      model: Store,
+      key: "id",
+    },
+    allowNull: false,
+  },
   order_date: {
     type: DataTypes.DATE,
     allowNull: false,
@@ -260,22 +268,36 @@ app.patch('/user/:id' , async (req,res) => {
   })
 })
 
-app.get('/products', async (req,res) => {
+app.get("/products", async (req, res) => {
   const products = await Product.findAll();
-  products.map((product) => {
-    if(product.discount){
-      product.discountPrice = product.price - (product.price * product.discount / 100);
+
+  // Buat array baru dengan properti discountPrice
+  const productsWithDiscount = products.map((product) => {
+    const productData = product.toJSON(); // Konversi ke plain object
+    if (productData.discount) {
+      productData.discountPrice =
+        productData.price - (productData.price * productData.discount) / 100;
     }
-  })
-  res.status(200).send(products);
-})
+    return productData;
+  });
+
+  res.status(200).send(productsWithDiscount);
+});
 
 app.get('/product/:id', async (req,res) => {
-  const product = await Product.findByPk(req.params.id);
-  if(product.discount){
-    product.discountPrice = product.price - (product.price * product.discount / 100);
-  }
-  res.status(200).send(product);
+  const products = await Product.findAll();
+
+  // Buat array baru dengan properti discountPrice
+  const productsWithDiscount = products.map((product) => {
+    const productData = product.toJSON(); // Konversi ke plain object
+    if (productData.discount) {
+      productData.discountPrice =
+        productData.price - (productData.price * productData.discount) / 100;
+    }
+    return productData;
+  });
+
+  res.status(200).send(productsWithDiscount);
 })
 
 app.post('/product', async (req,res) => {
@@ -353,6 +375,32 @@ app.post("/order", async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 });
+
+app.post('/toko', async (req,res) => {
+  const {name} = req.body
+  const store = await Store.create({name});
+  res.status(200).json({
+    message: "berhasil ditambahkan",
+    data : store
+  })
+})
+
+app.get('/product/toko/:id', async (req,res) => {
+  const products = await Product.findAll({where: {store_id: req.params.id}});
+  res.status(200).send(products);
+})
+
+app.get('/order/toko/:id', async (req,res) => {
+  const order = await Order.findAll({where: {store_id: req.params.id}});
+  res.status(200).send(order);
+})
+
+app.get('/order/buyer/:id', async (req,res) => {
+  const order = await Order.findByPk(req.params.id);
+  res.status(200).send(order);
+})
+
+
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
