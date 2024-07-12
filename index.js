@@ -118,6 +118,10 @@ const Product = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    expiry_date: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
     store_id: {
       type: DataTypes.INTEGER,
       references: {
