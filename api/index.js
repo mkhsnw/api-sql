@@ -12,7 +12,6 @@ app.use(bodyParser.json());
 const PORT = process.env.PORT 
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialect: "postgres", // Tambahkan ini
-  protocol: "postgres",
 });
 
 try{
