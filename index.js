@@ -4,6 +4,7 @@ import bodyParser from "body-parser";
 import dotenv from "dotenv"
 import {Sequelize} from "sequelize";
 import {DataTypes} from "sequelize";
+import pg from 'pg'
 
 dotenv.config();
 const app = express();
@@ -11,7 +12,7 @@ app.use(cors());
 app.use(bodyParser.json());
 const PORT = process.env.PORT 
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
- dialectModule: require('pg'),
+ dialectModule: pg,
 });
 
 try{
