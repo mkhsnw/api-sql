@@ -11,14 +11,7 @@ app.use(cors());
 app.use(bodyParser.json());
 const PORT = process.env.PORT 
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
-  dialect: "postgres",
-  protocol: "postgres",
-  dialectOptions: {
-    ssl: {
-      require: true,
-      rejectUnauthorized: false,
-    },
-  },
+ dialectModule: require('pg'),
 });
 
 try{
