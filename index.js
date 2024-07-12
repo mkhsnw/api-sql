@@ -325,72 +325,78 @@ app.delete("product/:id", async (req, res) => {
   });
 });
 
-app.post("/order", async (req, res) => {
- const { user_id, items } = req.body;
- const transaction = await sequelize.transaction();
+//TODO {user_id: 1, items: [{product_id: 1, quantity: 2}, {product_id: 2, quantity: 3}]
 
- try {
-   let total_price = 0;
-   const orderItemsData = [];
+ app.post("/order", async (req, res) => {
+   const { user_id, items } = req.body;
+   const transaction = await sequelize.transaction();
 
-   // Iterasi melalui item yang ada dalam pesanan
-   for (const item of items) {
-     const product = await Product.findByPk(item.product_id);
-     if (!product) {
-       throw new Error(`Product with ID ${item.product_id} not found`);
+   try {
+     let total_price = 0;
+     const orderItemsData = [];
+
+     // Jika items bukan array, ubah menjadi array dengan satu elemen
+     const itemsArray = Array.isArray(items) ? items : [items];
+
+     // Iterasi melalui item yang ada dalam pesanan
+     for (const item of itemsArray) {
+       const product = await Product.findByPk(item.product_id);
+       if (!product) {
+         throw new Error(`Product with ID ${item.product_id} not found`);
+       }
+       if (product.stock < item.quantity) {
+         throw new Error(`Stock tidak cukup untuk produk ${product.name}`);
+       }
+       const subtotal = product.price * item.quantity;
+       total_price += subtotal;
+       orderItemsData.push({
+         productId: item.product_id,
+         quantity: item.quantity,
+         price: product.price,
+         subtotal,
+         orderId: null, // Ini akan diisi setelah pesanan dibuat
+       });
      }
-     if (product.stock < item.quantity) {
-       throw new Error(`Stock tidak cukup untuk produk ${product.name}`);
+
+     // Membuat pesanan baru
+     const newOrder = await Order.create(
+       {
+         buyerId: user_id,
+         total_price,
+         store_id: itemsArray[0].store_id,
+         status: "PENDING",
+       },
+       { transaction }
+     );
+
+     // Mengaitkan setiap item pesanan dengan pesanan baru
+     for (const orderItem of orderItemsData) {
+       orderItem.orderId = newOrder.id;
      }
-     const subtotal = product.price * item.quantity;
-     total_price += subtotal;
-     orderItemsData.push({
-       productId: item.product_id,
-       quantity: item.quantity,
-       price: product.price,
-       subtotal,
-       orderId: null, // Ini akan diisi setelah pesanan dibuat
+
+     // Menyimpan item pesanan dalam tabel OrderItem
+     await OrderItem.bulkCreate(orderItemsData, { transaction });
+
+     // Memperbarui stok produk
+     for (const item of itemsArray) {
+       const product = await Product.findByPk(item.product_id);
+       product.stock -= item.quantity;
+       await product.save({ transaction });
+     }
+
+     // Commit transaksi
+     await transaction.commit();
+     res.status(201).json({
+       message: "Order created successfully",
+       order: newOrder,
+       orderItems: orderItemsData,
      });
+   } catch (error) {
+     // Rollback transaksi jika terjadi kesalahan
+     await transaction.rollback();
+     res.status(400).json({ message: error.message });
    }
-
-   // Membuat pesanan baru
-   const newOrder = await Order.create(
-     {
-       buyerId: user_id,
-       total_price,
-       status: "PENDING",
-     },
-     { transaction }
-   );
-
-   // Mengaitkan setiap item pesanan dengan pesanan baru
-   for (const orderItem of orderItemsData) {
-     orderItem.orderId = newOrder.id;
-   }
-
-   // Menyimpan item pesanan dalam tabel OrderItem
-   await OrderItem.bulkCreate(orderItemsData, { transaction });
-
-   // Memperbarui stok produk
-   for (const item of items) {
-     const product = await Product.findByPk(item.product_id);
-     product.stock -= item.quantity;
-     await product.save({ transaction });
-   }
-
-   // Commit transaksi
-   await transaction.commit();
-   res.status(201).json({
-     message: "Order created successfully",
-     order: newOrder,
-     orderItems: orderItemsData,
-   });
- } catch (error) {
-   // Rollback transaksi jika terjadi kesalahan
-   await transaction.rollback();
-   res.status(400).json({ message: error.message });
- }
-});
+ });
 
 app.post("/toko", async (req, res) => {
   const { name } = req.body;
@@ -417,6 +423,14 @@ app.get("/order/buyer/:id", async (req, res) => {
   const order = await Order.findByPk(req.params.id);
   res.status(200).send(order);
 });
+
+app.patch('/order/:id', async (req,res) => {
+  const order = await Order.update({status: "CREATING"}, {where: {id: req.params.id}})
+  res.status(200).json({
+    message: "berhasil diubah",
+    data: order
+  })
+})
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
